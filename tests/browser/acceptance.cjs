@@ -1,5 +1,6 @@
+const {CATALOG,CONFIG,runtimePath}=require('../../server/workspace-paths.cjs');
 const {chromium}=require('playwright');const assert=require('node:assert/strict');const fs=require('node:fs');const path=require('node:path');
-const root=process.cwd();const catalog=JSON.parse(fs.readFileSync(path.join(root,'.local/acceptance/catalog.json')));
+const root=process.cwd();const catalog=JSON.parse(fs.readFileSync(runtimePath('acceptance/catalog.json')));
 (async()=>{const b=await chromium.launch({channel:'chrome',headless:true});const report={checks:[],heap:[],cards:catalog.videos.length,errors:[]};try{
  const p=await b.newPage({viewport:{width:390,height:844}});p.on('pageerror',e=>report.errors.push(e.message));
  await p.route('**/catalog/videos.json',r=>r.fulfill({json:catalog}));await p.goto('http://127.0.0.1:5174');
@@ -21,16 +22,16 @@ const root=process.cwd();const catalog=JSON.parse(fs.readFileSync(path.join(root
  await p.locator('.explore-card').first().click();assert(p.url().endsWith('/video/acceptance-00'));await p.goBack();await p.locator('.explore-card').first().waitFor();
  report.checks.push('explore: category/tag/search/reset/detail/history and zero players');
  for(const width of [360,390,430,1440]){await p.setViewportSize({width,height:844});assert(await p.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));}
- await p.setViewportSize({width:390,height:844});await p.screenshot({path:'.local/acceptance/explore.png'});
+ await p.setViewportSize({width:390,height:844});await p.screenshot({path:runtimePath('acceptance/explore.png')});
  await p.goto('http://127.0.0.1:5174/video/acceptance-00');await p.waitForFunction(()=>document.querySelector('.zc-tiktok__fit video')?.currentTime>.2);
  await p.evaluate(()=>{Object.defineProperty(document,'hidden',{configurable:true,get:()=>true});document.dispatchEvent(new Event('visibilitychange'))});assert(await p.locator('.zc-tiktok__fit video').evaluate(v=>v.paused));
  report.checks.push('visibility handler pauses on hidden event (simulated; not real phone)');
  await p.reload();await p.waitForFunction(()=>document.querySelector('.zc-tiktok__fit video')?.currentTime>.2);
- await p.screenshot({path:'.local/acceptance/player.png'});
+ await p.screenshot({path:runtimePath('acceptance/player.png')});
  // An automatic play rejection must leave a usable manual button, without waiting forever.
  await p.addInitScript(()=>{const original=HTMLMediaElement.prototype.play;let first=true;HTMLMediaElement.prototype.play=function(){if(first){first=false;return Promise.reject(new DOMException('Not allowed','NotAllowedError'))}return original.call(this)}});
  await p.reload();await p.waitForFunction(()=>document.querySelector('.zc-tiktok__fit .player')?.dataset.playerStatus==='paused');
  await p.locator('.zc-tiktok__fit').getByRole('button',{name:'Reproducir',exact:true}).click();await p.waitForFunction(()=>document.querySelector('.zc-tiktok__fit video')?.currentTime>.2);
  report.checks.push('autoplay refusal recovers through manual play');
- assert.deepEqual(report.errors,[]);report.passed=true;fs.writeFileSync('.local/acceptance/browser-report.json',JSON.stringify(report,null,2));console.log('PASS',JSON.stringify(report));
+ assert.deepEqual(report.errors,[]);report.passed=true;fs.writeFileSync(runtimePath('acceptance/browser-report.json'),JSON.stringify(report,null,2));console.log('PASS',JSON.stringify(report));
 }finally{await b.close()}})().catch(e=>{console.error(e);process.exit(1)});

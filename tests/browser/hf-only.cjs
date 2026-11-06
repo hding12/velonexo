@@ -1,14 +1,15 @@
+const {CATALOG,CONFIG,runtimePath}=require('../../server/workspace-paths.cjs');
 const {chromium}=require('playwright');
 const assert=require('node:assert/strict');
 const fs=require('node:fs');
 (async()=>{
- const config=JSON.parse(fs.readFileSync('config/storage.json'));
+ const config=JSON.parse(fs.readFileSync(CONFIG));
  assert.deepEqual(config.providers.filter(p=>p.enabled!==false).map(p=>p.id),['hf']);
- const entry=JSON.parse(fs.readFileSync('public/catalog/videos.json')).videos.find(v=>v.id==='native-audio');
- const map=JSON.parse(fs.readFileSync('.local/media/'+entry.source.media_map.split('/local-media/')[1]));
+ const entry=JSON.parse(fs.readFileSync(CATALOG)).videos.find(v=>v.id==='native-audio');
+ const map=JSON.parse(fs.readFileSync(runtimePath('media',entry.source.media_map.split('/local-media/')[1])));
  assert(map.objects.every(o=>o.provider_id==='hf'));
  assert.equal(map.expires_in_seconds,null);
- const manifest=fs.readFileSync('.local/media/'+entry.source.playlist.split('/local-media/')[1],'utf8');
+ const manifest=fs.readFileSync(runtimePath('media',entry.source.playlist.split('/local-media/')[1]),'utf8');
  assert(!manifest.includes('X-Amz-'));
  const b=await chromium.launch({channel:'chrome',headless:true});
  try {

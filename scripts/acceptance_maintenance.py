@@ -13,7 +13,7 @@ import media_maintenance as maintenance
 
 
 def main():
-    evidence=m.ROOT/'.local/acceptance/maintenance-remote.json'
+    evidence=m.RUNTIME/'acceptance/maintenance-remote.json'
     with open(m.STATE/'lock','a') as lock:
         fcntl.flock(lock,fcntl.LOCK_EX|fcntl.LOCK_NB)
         real_ledger=m.ledger()

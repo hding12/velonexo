@@ -15,10 +15,10 @@ import tempfile
 from datetime import datetime, timezone
 from media_storage import ROOT, digest, stores
 
-STATE = ROOT / '.local/publisher'
-MEDIA = ROOT / '.local/media'
-CATALOG = ROOT / 'public/catalog/videos.json'
-CONFIG = ROOT / 'config/storage.json'
+from workspace_paths import RUNTIME, CATALOG, CONFIG, ENV_FILE
+
+STATE = RUNTIME / 'publisher'
+MEDIA = RUNTIME / 'media'
 AUDIT_CONTEXT = {'action': 'catalog-update', 'reason': 'Local catalog operation', 'actor': 'local-operator'}
 
 

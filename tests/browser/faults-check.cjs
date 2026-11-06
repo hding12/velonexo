@@ -1,6 +1,7 @@
+const {CATALOG,CONFIG,runtimePath}=require('../../server/workspace-paths.cjs');
 const {chromium}=require('playwright');const assert=require('node:assert/strict');const fs=require('node:fs');
 (async()=>{const b=await chromium.launch({channel:'chrome',headless:true});const results=[];try{
- const catalog=JSON.parse(fs.readFileSync('.local/acceptance/catalog.json'));catalog.videos=catalog.videos.slice(0,2);
+ const catalog=JSON.parse(fs.readFileSync(runtimePath('acceptance/catalog.json')));catalog.videos=catalog.videos.slice(0,2);
  for(const scenario of ['manifest-404','segment-404','timeout','offline']){
   console.log('Testing',scenario);const context=await b.newContext();const p=await context.newPage();let requests=0;
   await p.route('**/catalog/videos.json',r=>r.fulfill({json:catalog}));
@@ -18,5 +19,5 @@ const {chromium}=require('playwright');const assert=require('node:assert/strict'
   }
   results.push({scenario,requests,stoppedAfterError:true});await context.close();
  }
- console.log('PASS',JSON.stringify(results));fs.writeFileSync('.local/acceptance/fault-report.json',JSON.stringify(results,null,2));
+ console.log('PASS',JSON.stringify(results));fs.writeFileSync(runtimePath('acceptance/fault-report.json'),JSON.stringify(results,null,2));
 }finally{await b.close()}})().catch(e=>{console.error(e);process.exit(1)});

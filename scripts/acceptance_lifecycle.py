@@ -14,7 +14,7 @@ def main():
         if (r.returncode==0)!=success:raise AssertionError('Unexpected CLI result: '+args[0]+' '+r.stderr)
         return r
     try:
-        source=m.ROOT/('.local/fixtures/portrait-audio.mp4' if remote else '.local/acceptance/source-01.mp4')
+        source=m.RUNTIME/('fixtures/portrait-audio.mp4' if remote else 'acceptance/source-01.mp4')
         run('publish','--input',str(source),'--id','lifecycle-test','--title','Prueba de recuperación',*(() if remote else ('--provider','local')))
         dest,media=m.find_map('lifecycle-test')
         assert (m.STATE/'sources'/(media['source_sha256']+'.source')).exists()

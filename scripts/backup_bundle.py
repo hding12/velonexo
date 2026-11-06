@@ -31,14 +31,16 @@ def create(output):
         def copy(source, name=None):
             if source.is_symlink() or not source.is_file():
                 raise ValueError('Backup requires regular files')
-            target = stage / (name or source.relative_to(m.ROOT))
+            if name is None:
+                name = Path('.local') / source.relative_to(m.RUNTIME) if source.is_relative_to(m.RUNTIME) else source.relative_to(m.ROOT)
+            target = stage / name
             target.parent.mkdir(parents=True, exist_ok=True)
             shutil.copy2(source, target)
-        for folder in ('src','server','scripts','docs','tests'):
+        for folder in ('src','server','scripts','docs','tests','public/embeds'):
             for source in (m.ROOT / folder).rglob('*'):
                 if source.is_file() and '__pycache__' not in source.parts:
                     copy(source)
-        for name in ('package.json','package-lock.json','tsconfig.json','vite.config.js','index.html','README.md','DESIGN.md','.gitignore'):
+        for name in ('package.json','package-lock.json','tsconfig.json','vite.config.js','index.html','README.md','DESIGN.md','.gitignore','.env.example','config/catalog.example.json','config/storage.example.json'):
             if (m.ROOT/name).exists():
                 copy(m.ROOT/name)
         # Provider configs contain env-variable references, never credential values.
@@ -63,7 +65,7 @@ def create(output):
             original=m.STATE/'sources'/(media['source_sha256']+'.source')
             if not original.exists():
                 raise ValueError('Original backup missing')
-            target=stage/source.parent.relative_to(m.ROOT)
+            target=stage/'.local'/source.parent.relative_to(m.RUNTIME)
             for obj in media['objects']:
                 local=source.parent/obj['file']
                 if not local.is_file() or m.digest(local)!=obj['sha256']:
@@ -81,7 +83,7 @@ def create(output):
                 rel=entry['source'].get('media_map','').removeprefix('/local-media/')
                 if not (stage/'.local/media'/rel).is_file():
                     raise ValueError('Catalog references an unavailable version')
-        values=dotenv_values(m.ROOT/'.env.local')
+        values=dotenv_values(m.ENV_FILE)
         secrets=[v.encode() for k,v in values.items() if v and len(v)>6 and any(t in k for t in ('TOKEN','SECRET','ACCESS_KEY'))]
         manifest={}
         for file in sorted(stage.rglob('*')):
@@ -137,6 +139,18 @@ def restore(archive_path,destination):
             for obj in media['objects']:
                 if m.digest(file.parent/obj['file'])!=obj['sha256']:
                     raise ValueError('Restored media hash mismatch')
+        # New code uses isolated local data; old archives keep their original layout.
+        if (stage/'scripts/workspace_paths.py').exists():
+            local=stage/'.local-work'
+            local.mkdir()
+            if (stage/'.local').exists():
+                os.replace(stage/'.local',local/'runtime')
+            else:
+                (local/'runtime').mkdir()
+            (local/'catalog').mkdir()
+            os.replace(stage/'public/catalog/videos.json',local/'catalog/videos.json')
+            (local/'config').mkdir()
+            os.replace(stage/'config/storage.json',local/'config/storage.json')
         os.replace(stage,destination)
         return info
     finally:

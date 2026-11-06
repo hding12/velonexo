@@ -1,5 +1,8 @@
 # 静态站点导出
 
+> 目录迁移说明：当前命令从 `code/` 执行；旧 `.local/` 对应 `../local/runtime/`，旧根 `.env.local` 对应 `../local/secrets/.env.local`，实际目录在 `../local/catalog/videos.json`，实际存储配置在 `../local/config/storage.json`。新克隆默认布局及最新操作以 [工作区布局](workspace-layout.md) 为准。
+
+
 运行 `npm run build:static`，输出 `.local/static-site`。这一步只生成本地文件，不部署、不注册账号。`dist` 是中间前端产物，完整交付目录是 `.local/static-site`。
 
 导出只包含已发布目录、对应版本映射/播放清单、本地片段与封面及前端资源。远程HF片段继续使用公开URL，不复制原片、密钥、任务记录、草稿或Studio。旧包保存在 `.local/static-site.previous`；导出校验失败不替换现有包。运行期间通过发布锁避免与目录写入并发。

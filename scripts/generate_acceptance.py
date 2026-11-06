@@ -10,7 +10,7 @@ import media_publish as m
 def main():
     parser=argparse.ArgumentParser();parser.add_argument('--count',type=int,default=50);args=parser.parse_args()
     if not 1<=args.count<=50:raise ValueError('count must be 1..50')
-    work=m.ROOT/'.local/acceptance';work.mkdir(parents=True,exist_ok=True)
+    work=m.RUNTIME/'acceptance';work.mkdir(parents=True,exist_ok=True)
     entries=[]
     for i in range(args.count):
         source=work/f'source-{i:02}.mp4'

@@ -1,5 +1,8 @@
 # 本地媒体管理页
 
+> 目录迁移说明：当前命令从 `code/` 执行；旧 `.local/` 对应 `../local/runtime/`，旧根 `.env.local` 对应 `../local/secrets/.env.local`，实际目录在 `../local/catalog/videos.json`，实际存储配置在 `../local/config/storage.json`。新克隆默认布局及最新操作以 [工作区布局](workspace-layout.md) 为准。
+
+
 入口：`http://127.0.0.1:5174/studio`，启动方式仍为 `npm run dev`。依赖 `.venv`、FFmpeg 和离线发布工具；安装步骤见 local-demo.md。
 
 ## 操作

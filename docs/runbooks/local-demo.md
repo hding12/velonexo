@@ -1,5 +1,8 @@
 # 本地演示、发布与恢复
 
+> 目录迁移说明：当前命令从 `code/` 执行；旧 `.local/` 对应 `../local/runtime/`，旧根 `.env.local` 对应 `../local/secrets/.env.local`，实际目录在 `../local/catalog/videos.json`，实际存储配置在 `../local/config/storage.json`。新克隆默认布局及最新操作以 [工作区布局](workspace-layout.md) 为准。
+
+
 适用范围：本机开发演示。远程测试只使用合成非露骨视频。不代表已完成公开上线或真实手机验收。
 
 ## 一次性准备

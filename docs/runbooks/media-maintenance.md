@@ -1,5 +1,8 @@
 # 媒体迁移与旧版本清理
 
+> 目录迁移说明：当前命令从 `code/` 执行；旧 `.local/` 对应 `../local/runtime/`，旧根 `.env.local` 对应 `../local/secrets/.env.local`，实际目录在 `../local/catalog/videos.json`，实际存储配置在 `../local/config/storage.json`。新克隆默认布局及最新操作以 [工作区布局](workspace-layout.md) 为准。
+
+
 所有命令在项目根目录执行，复用发布锁。当前启用的远程目标是 `hf`，也可用 `local`；其他节点必须已配置并启用。
 
 先预览批量迁移（最多50个稳定视频ID）：

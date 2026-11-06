@@ -1,5 +1,6 @@
+const {CATALOG,CONFIG,runtimePath}=require('../../server/workspace-paths.cjs');
 const {chromium}=require('playwright');const fs=require('node:fs');const assert=require('node:assert/strict');
-const file='public/catalog/videos.json',baseline=fs.readFileSync(file),dir='.local/publisher/backups';
+const file=CATALOG,baseline=fs.readFileSync(file),dir=runtimePath('publisher/backups');
 const good='20990101T000000000001.json',bad='20990101T000000000002.json';
 (async()=>{const b=await chromium.launch({channel:'chrome',headless:true});try{
  const candidate=JSON.parse(baseline);candidate.videos.find(v=>v.id==='native-audio').visibility='draft';candidate.videos.find(v=>v.id==='demo-1').title='Prueba de restauración';

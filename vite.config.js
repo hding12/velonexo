@@ -1,3 +1,6 @@
+import {createRequire} from 'node:module';
+const workspace=createRequire(import.meta.url)('./server/workspace-paths.cjs');
+const {ROOT,RUNTIME,CATALOG,LOCAL_ROOT}=workspace;
 import {studioMiddleware} from './server/studio.js';
 import {defineConfig} from 'vite';
 import fs from 'node:fs';
@@ -7,7 +10,7 @@ function localMedia(req,res,next){
  if(!pathname.startsWith('/local-media/'))return next();
  const match=pathname.match(/^\/local-media\/([A-Za-z0-9_-]+)\/([a-f0-9]{16})\/(map\.json|play\.m3u8|poster\.jpg|init\.mp4|seg_\d+\.m4s)$/);
  if(!match||!['GET','HEAD'].includes(req.method)){res.statusCode=404;return res.end()}
- const file=path.resolve('.local/media',...match.slice(1));
+ const file=path.resolve(RUNTIME,'media',...match.slice(1));
  try{
   const map=JSON.parse(fs.readFileSync(path.join(path.dirname(file),'map.json'),'utf8'));
   if(map.state==='purged'){res.statusCode=404;return res.end('Media removed')}
@@ -24,8 +27,13 @@ function localMedia(req,res,next){
   const stream=fs.createReadStream(file,{start,end});stream.on('error',()=>res.destroy());res.on('close',()=>stream.destroy());stream.pipe(res);
  }catch{res.statusCode=404;res.end('Media not available')}
 }
-export default defineConfig({server:{watch:{ignored:['**/.local/**','**/public/catalog/**']}},plugins:[{name:'local-demo-media',configureServer(server){
+export default defineConfig({server:{fs:{allow:[ROOT],deny:['.env','.env.*','*.{crt,pem,key}','**/.git/**','**/.workspace.local.json','**/.local-work/**']},watch:{ignored:['**/.local-work/**',LOCAL_ROOT+'/**']}},plugins:[{name:'local-demo-media',configureServer(server){
+ server.middlewares.use((req,res,next)=>{
+  if(new URL(req.url,'http://localhost').pathname!=='/catalog/videos.json')return next();
+  if(!['GET','HEAD'].includes(req.method)){res.statusCode=405;return res.end()}
+  try{const data=fs.readFileSync(CATALOG);res.setHeader('Content-Type','application/json');res.setHeader('Cache-Control','no-store');res.setHeader('Content-Length',data.length);res.end(req.method==='HEAD'?undefined:data)}catch{res.statusCode=503;res.end('Initialize local data with npm run setup:local')}
+ });
  server.middlewares.use(studioMiddleware(server));
  server.middlewares.use(localMedia);
- server.middlewares.use('/demo.m3u8',(req,res)=>{try{res.setHeader('Content-Type','application/vnd.apple.mpegurl');res.setHeader('Cache-Control','no-store');res.end(fs.readFileSync('.local/hls-smoke/remote.m3u8'))}catch{res.statusCode=404;res.end('Demo not generated')}})
+ server.middlewares.use('/demo.m3u8',(req,res)=>{try{res.setHeader('Content-Type','application/vnd.apple.mpegurl');res.setHeader('Cache-Control','no-store');res.end(fs.readFileSync(path.join(RUNTIME,'hls-smoke/remote.m3u8')))}catch{res.statusCode=404;res.end('Demo not generated')}})
 }}]});

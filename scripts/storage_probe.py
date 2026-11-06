@@ -5,7 +5,7 @@ import tempfile
 import uuid
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parents[1]
+from workspace_paths import ROOT, ENV_FILE
 os.environ.setdefault('HF_HOME', str(Path(tempfile.gettempdir()) / 'velonexo-hf-cache'))
 os.environ.setdefault('HF_HUB_DISABLE_PROGRESS_BARS', '1')
 from dotenv import dotenv_values
@@ -46,7 +46,7 @@ def probe_hf(values, key, payload):
 
 
 def main():
-    values = dotenv_values(ROOT / '.env.local')
+    values = dotenv_values(ENV_FILE)
     failed = False
     for name, probe in [('tigris', probe_tigris), ('hf', probe_hf)]:
         key = '_connection-test/' + str(uuid.uuid4()) + '.txt'

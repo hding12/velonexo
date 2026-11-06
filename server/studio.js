@@ -1,3 +1,5 @@
+import {createRequire} from 'node:module';
+const workspace=createRequire(import.meta.url)('./workspace-paths.cjs');
 // Development-only local Studio. Not a public administration service.
 import fs from 'node:fs';
 import fsp from 'node:fs/promises';
@@ -15,10 +17,10 @@ function metadata(value){
 async function body(req){let text='';for await(const chunk of req){text+=chunk.toString();if(Buffer.byteLength(text)>8192)throw Error('invalid-metadata')}return JSON.parse(text)}
 
 export function studioMiddleware(server,options={}){
- const ROOT=options.root||process.cwd();
- const STATE=path.join(ROOT,'.local/studio');
+ const {ROOT,LOCAL_ROOT,RUNTIME,CATALOG,CONFIG}=workspace.workspacePaths(options.root,options.localRoot);
+ const STATE=path.join(RUNTIME,'studio');
  const worker=options.worker||[path.join(ROOT,'.venv/bin/python'),'-u',path.join(ROOT,'scripts/media_publish.py')];
- const readCatalog=()=>JSON.parse(fs.readFileSync(path.join(ROOT,'public/catalog/videos.json'),'utf8'));
+ const readCatalog=()=>JSON.parse(fs.readFileSync(CATALOG,'utf8'));
  const sourceFile=job=>path.join(STATE,'uploads',job.id+'.source');
  const entryExists=job=>readCatalog().videos.some(v=>v.id===job.videoId);
  const publicJob=job=>({id:job.id,videoId:job.videoId,title:job.title,action:job.action,state:job.state,stage:job.stage,error:job.error,estimate:job.estimate,attempts:job.attempts||1,
@@ -35,7 +37,7 @@ export function studioMiddleware(server,options={}){
  function run(job,args,reason){
   job.reason=job.reason||reason||'Operación local desde Studio';
   job.args=args;job.attempts=(job.attempts||0)+1;delete job.error;delete job.finishedAt;job.state='running';job.stage=job.action==='upload'?'prepare':job.action;persist();
-  const processHandle=spawn(worker[0],[...worker.slice(1),...args],{cwd:ROOT,env:{...process.env,VELONEXO_AUDIT_REASON:job.reason},detached:true,stdio:['ignore','pipe','pipe']});
+  const processHandle=spawn(worker[0],[...worker.slice(1),...args],{cwd:ROOT,env:{...process.env,VELONEXO_LOCAL_ROOT:LOCAL_ROOT,VELONEXO_AUDIT_REASON:job.reason},detached:true,stdio:['ignore','pipe','pipe']});
   child=processHandle;let finished=false;let stdout='';let stderr='';let stopReason;let forceKill;
   const stop=reason=>{stopReason=reason;try{process.kill(-processHandle.pid,'SIGTERM')}catch{}forceKill=setTimeout(()=>{if(!finished)try{process.kill(-processHandle.pid,'SIGKILL')}catch{}},3000)};
   const finish=(ok)=>{if(finished)return;finished=true;clearTimeout(timeout);clearTimeout(forceKill);
@@ -67,21 +69,21 @@ export function studioMiddleware(server,options={}){
   if(typeof supplied!=='string'||!(/^[a-f0-9]{64}$/).test(supplied)||!timingSafeEqual(Buffer.from(supplied),Buffer.from(token)))return send(res,403,{error:'session-required'});
   try{
    if(req.method==='GET'&&pathname==='/api/studio/state'){
-    const config=JSON.parse(fs.readFileSync(path.join(ROOT,'config/storage.json'),'utf8'));
-    const ledgerFile=path.join(ROOT,'.local/publisher/objects.json');const ledger=fs.existsSync(ledgerFile)?JSON.parse(fs.readFileSync(ledgerFile,'utf8')):{};
-    const probesFile=path.join(ROOT,'.local/publisher/probes.json');const probes=fs.existsSync(probesFile)?JSON.parse(fs.readFileSync(probesFile,'utf8')):{};
+    const config=JSON.parse(fs.readFileSync(CONFIG,'utf8'));
+    const ledgerFile=path.join(RUNTIME,'publisher/objects.json');const ledger=fs.existsSync(ledgerFile)?JSON.parse(fs.readFileSync(ledgerFile,'utf8')):{};
+    const probesFile=path.join(RUNTIME,'publisher/probes.json');const probes=fs.existsSync(probesFile)?JSON.parse(fs.readFileSync(probesFile,'utf8')):{};
     const storage=config.providers.map(p=>({id:p.id,type:p.type,enabled:p.enabled!==false,limitBytes:p.project_limit_bytes,usedBytes:Object.values(ledger).filter(o=>o.provider_id===p.id&&!o.deleted).reduce((n,o)=>n+o.size_bytes,0),probe:probes[p.id]}));
     const catalog=readCatalog();const taxonomy={categories:[...new Set([...(catalog.taxonomy?.categories||[]),...catalog.videos.map(v=>v.category||'prueba').sort()])],tags:[...new Set([...(catalog.taxonomy?.tags||[]),...catalog.videos.flatMap(v=>v.tags).sort()])]};
     return send(res,200,{editorial:catalog.editorial||{featured:[],topics:[]},taxonomy,storage,entries:readCatalog().videos.filter(v=>v.source.kind==='native'),jobs:jobs.map(publicJob),busy:!!active,providers:config.providers.filter(p=>p.enabled!==false).map(p=>p.id)});
    }
    if(req.method==='GET'&&pathname==='/api/studio/backups'){
-    const dir=path.join(ROOT,'.local/publisher/backups');
+    const dir=path.join(RUNTIME,'publisher/backups');
     const backups=(fs.existsSync(dir)?fs.readdirSync(dir):[]).filter(id=>/^\d{8}T\d{12}\.json$/.test(id)).sort().reverse().flatMap(id=>{
      try{const file=path.join(dir,id);if(!fs.lstatSync(file).isFile())return [];const data=JSON.parse(fs.readFileSync(file,'utf8'));if(!Array.isArray(data.videos))return [];return [{id,createdAt:fs.statSync(file).mtime.toISOString(),entries:data.videos.length,published:data.videos.filter(v=>v.visibility==='published').length}]}catch{return []}
     });return send(res,200,{backups});
    }
    if(req.method==='GET'&&pathname==='/api/studio/history'){
-    const dir=path.join(ROOT,'.local/publisher/events');
+    const dir=path.join(RUNTIME,'publisher/events');
     const events=(fs.existsSync(dir)?fs.readdirSync(dir):[]).filter(n=>/^\d{8}T\d{12}-[a-f0-9]{32}\.json$/.test(n)).sort().reverse().map(n=>{const file=path.join(dir,n);return fs.lstatSync(file).isFile()?JSON.parse(fs.readFileSync(file,'utf8')):null}).filter(Boolean);
     return send(res,200,{events});
    }
@@ -92,14 +94,14 @@ export function studioMiddleware(server,options={}){
    if(pathname==='/api/studio/restore-backup'){
     const value=await body(req);
     if(typeof value.id!=='string'||!/^\d{8}T\d{12}\.json$/.test(value.id))return send(res,400,{error:'invalid-backup'});
-    const file=path.join(ROOT,'.local/publisher/backups',value.id);
+    const file=path.join(RUNTIME,'publisher/backups',value.id);
     if(!fs.existsSync(file)||!fs.lstatSync(file).isFile())return send(res,404,{error:'not-found'});
     if(active)return send(res,409,{error:'busy'});
     const job={id:randomUUID(),videoId:'',title:value.id,action:'restore-catalog',state:'running',stage:'restore-catalog',createdAt:new Date().toISOString()};jobs.push(job);active=job;run(job,['restore-catalog',file],requestReason);return send(res,202,{job:publicJob(job)});
    }
    const storageMatch=pathname.match(/^\/api\/studio\/storage\/([A-Za-z0-9_-]+)\/(probe|toggle)$/);
    if(storageMatch){
-    const [,id,action]=storageMatch;const config=JSON.parse(fs.readFileSync(path.join(ROOT,'config/storage.json'),'utf8'));
+    const [,id,action]=storageMatch;const config=JSON.parse(fs.readFileSync(CONFIG,'utf8'));
     if(!config.providers.some(p=>p.id===id))return send(res,404,{error:'not-found'});
     const args=[action==='probe'?'probe-provider':'set-provider',id];
     if(action==='toggle'){const value=await body(req);if(typeof value.enabled!=='boolean')return send(res,400,{error:'invalid-request'});args.push('--enabled',String(value.enabled))}
@@ -146,7 +148,7 @@ export function studioMiddleware(server,options={}){
     const length=Number(req.headers['content-length']);if(!Number.isInteger(length)||length<=0||length>MAX_UPLOAD)return send(res,413,{error:'file-size'});
     const value=metadata(JSON.parse(decodeURIComponent(req.headers['x-studio-metadata']||'')));
     const provider=req.headers['x-studio-provider'];
-    const allowed=['local','distributed',...JSON.parse(fs.readFileSync(path.join(ROOT,'config/storage.json'),'utf8')).providers.filter(p=>p.enabled!==false).map(p=>p.id)];
+    const allowed=['local','distributed',...JSON.parse(fs.readFileSync(CONFIG,'utf8')).providers.filter(p=>p.enabled!==false).map(p=>p.id)];
     if(!allowed.includes(provider))return send(res,400,{error:'invalid-provider'});
     const job={id:randomUUID(),videoId:'video-'+randomUUID(),action:'upload',title:value.title,state:'uploading',stage:'receiving',createdAt:new Date().toISOString()};jobs.push(job);active=job;persist();
     const file=path.join(STATE,'uploads',job.id+'.source');let received=0;let handle;

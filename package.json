@@ -16,7 +16,9 @@
     "test:studio:storage": "node tests/browser/studio-storage.cjs",
     "test:studio:backups": "node tests/browser/studio-backups.cjs",
     "build:static": "VITE_STATIC_EXPORT=1 npm run build && .venv/bin/python scripts/export_static.py",
-    "test:delivery": "node scripts/run_delivery_checks.cjs"
+    "test:delivery": "node scripts/run_delivery_checks.cjs",
+    "setup:local": "python3 scripts/setup_local.py",
+    "check:repo": ".venv/bin/python scripts/check_repository.py"
   },
   "dependencies": {
     "@zyncat/ui": "0.21.0",

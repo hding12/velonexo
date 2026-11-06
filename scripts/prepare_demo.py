@@ -4,9 +4,11 @@ from datetime import datetime, timezone
 import subprocess
 import sys
 import media_publish as m
+from setup_local import initialize
 
 
 def main():
+    initialize()
     p=argparse.ArgumentParser();p.add_argument('--remote',action='store_true');args=p.parse_args()
     subprocess.run([sys.executable,str(m.ROOT/'scripts/generate_acceptance.py'),'--count','50'],check=True)
     titles=['Hola, bienvenidos. Un espacio para compartir con buena onda.','Sigue mirando. Este es un video de prueba.','Gracias por pasar por acá.']
@@ -15,9 +17,11 @@ def main():
     old=m.read(m.CATALOG)
     for i,title in enumerate(titles):
         video_id=f'demo-{i+1}'
-        m.publish(argparse.Namespace(input=str(m.ROOT/f'.local/acceptance/source-{i:02}.mp4'),id=video_id,title=title,creator='@velonexo',category=['vertical','horizontal','cuadrado'][i],tag=['prueba','demo']+(['comunidad'] if i==1 else []),provider='local',dry_run=False))
+        if any(v['id']==video_id for v in old['videos']):
+            continue
+        m.publish(argparse.Namespace(input=str(m.RUNTIME/f'acceptance/source-{i:02}.mp4'),id=video_id,title=title,creator='@velonexo',category=['vertical','horizontal','cuadrado'][i],tag=['prueba','demo']+(['comunidad'] if i==1 else []),provider='local',dry_run=False))
     if args.remote:
-        work=m.ROOT/'.local/fixtures';work.mkdir(parents=True,exist_ok=True);source=work/'portrait-audio.mp4'
+        work=m.RUNTIME/'fixtures';work.mkdir(parents=True,exist_ok=True);source=work/'portrait-audio.mp4'
         if not source.exists():
             m.command(['ffmpeg','-hide_banner','-loglevel','error','-y','-f','lavfi','-i','testsrc2=size=360x640:rate=24','-f','lavfi','-i','sine=frequency=440:sample_rate=48000','-t','8','-c:v','libx264','-preset','ultrafast','-crf','30','-c:a','aac','-shortest',str(source)])
         m.publish(argparse.Namespace(input=str(source),id='native-audio',title='Video de prueba con sonido',creator='@velonexo',category='prueba',tag=['prueba','sonido'],provider=None,dry_run=False))

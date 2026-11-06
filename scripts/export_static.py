@@ -8,7 +8,7 @@ import tempfile
 import media_publish as m
 from storage_probe import dotenv_values
 
-OUTPUT = m.ROOT / '.local/static-site'
+OUTPUT = m.RUNTIME / 'static-site'
 
 
 def export(output=OUTPUT):
@@ -22,7 +22,7 @@ def export(output=OUTPUT):
         catalog['editorial']['featured'] = [i for i in catalog['editorial']['featured'] if i in published]
         for topic in catalog['editorial']['topics']:
             topic['ids'] = [i for i in topic['ids'] if i in published]
-    stage = Path(tempfile.mkdtemp(prefix='static-export-', dir=m.ROOT / '.local'))
+    stage = Path(tempfile.mkdtemp(prefix='static-export-', dir=m.RUNTIME))
     try:
         shutil.copy2(m.ROOT / 'dist/index.html', stage / 'index.html')
         shutil.copytree(m.ROOT / 'dist/assets', stage / 'assets')
@@ -59,7 +59,7 @@ def export(output=OUTPUT):
         shutil.copy2(stage / 'index.html', stage / 'explore/index.html')
         (stage / '_redirects').write_text('/* /index.html 200\n')
         (stage / '_headers').write_text('/local-media/*\n  Access-Control-Allow-Origin: *\n  X-Content-Type-Options: nosniff\n')
-        secrets = [v.encode() for k, v in dotenv_values(m.ROOT / '.env.local').items() if v and len(v)>6 and any(t in k for t in ('TOKEN','SECRET','ACCESS_KEY'))]
+        secrets = [v.encode() for k, v in dotenv_values(m.ENV_FILE).items() if v and len(v)>6 and any(t in k for t in ('TOKEN','SECRET','ACCESS_KEY'))]
         for file in stage.rglob('*'):
             if file.is_file():
                 data = file.read_bytes()
@@ -76,7 +76,7 @@ def export(output=OUTPUT):
             if old.exists():
                 os.replace(old, output)
             raise
-        print(json.dumps({'output': str(output.relative_to(m.ROOT)), 'published': len(catalog['videos']), 'files': sum(p.is_file() for p in output.rglob('*'))}))
+        print(json.dumps({'output': str(output), 'published': len(catalog['videos']), 'files': sum(p.is_file() for p in output.rglob('*'))}))
     finally:
         if stage.exists():
             shutil.rmtree(stage)

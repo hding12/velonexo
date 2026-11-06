@@ -3,7 +3,7 @@ import hashlib
 import mimetypes
 from urllib.parse import quote
 from urllib.request import Request, urlopen
-from storage_probe import ROOT, boto3, Config, batch_bucket_files, dotenv_values
+from storage_probe import ROOT, ENV_FILE, boto3, Config, batch_bucket_files, dotenv_values
 
 
 def digest(path):
@@ -91,5 +91,5 @@ class Store:
 
 
 def stores(config):
-    values = dotenv_values(ROOT / '.env.local')
+    values = dotenv_values(ENV_FILE)
     return {p['id']: Store(p, values) for p in config['providers']}

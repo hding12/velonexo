@@ -1,11 +1,12 @@
+from workspace_paths import RUNTIME
 """Validate build output contains no configured credentials or signed URLs."""
 from pathlib import Path
 import sys
 sys.path.insert(0,str(Path(__file__).resolve().parent))
-from storage_probe import ROOT,dotenv_values
+from storage_probe import ROOT, ENV_FILE,dotenv_values
 
 def main():
-    values=dotenv_values(ROOT/'.env.local')
+    values=dotenv_values(ENV_FILE)
     secrets=[v for k,v in values.items() if v and len(v)>6 and any(s in k for s in ('TOKEN','SECRET','ACCESS_KEY'))]
     files=[p for p in (ROOT/'dist').rglob('*') if p.is_file()]
     if not files:raise SystemExit('Build output missing')

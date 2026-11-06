@@ -16,7 +16,7 @@ def main():
         fcntl.flock(lock,fcntl.LOCK_EX|fcntl.LOCK_NB)
         for provider in ['tigris','hf']:
             video_id='cleanup-test-'+uuid.uuid4().hex[:12];calls=[];original=Store.upload
-            args=argparse.Namespace(input=str(m.ROOT/'.local/fixtures/portrait-audio.mp4'),id=video_id,title='Prueba de limpieza',creator='@test',category='prueba',tag=[],provider=provider,dry_run=False,draft=True)
+            args=argparse.Namespace(input=str(m.RUNTIME/'fixtures/portrait-audio.mp4'),id=video_id,title='Prueba de limpieza',creator='@test',category='prueba',tag=[],provider=provider,dry_run=False,draft=True)
             def interrupted(self,file,key):
                 calls.append(key)
                 if len(calls)==2:raise OSError('Injected interruption before second object')

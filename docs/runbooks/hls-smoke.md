@@ -1,5 +1,8 @@
 # 双节点 HLS 技术验证
 
+> 目录迁移说明：当前命令从 `code/` 执行；旧 `.local/` 对应 `../local/runtime/`，旧根 `.env.local` 对应 `../local/secrets/.env.local`，实际目录在 `../local/catalog/videos.json`，实际存储配置在 `../local/config/storage.json`。新克隆默认布局及最新操作以 [工作区布局](workspace-layout.md) 为准。
+
+
 > 历史阶段记录：双存储与签名测试描述的是当时验收。当前只启用HF公开地址，Tigris暂停；当前能力以 docs/plans/2026-11-06-next-delivery.md 和最新运行手册为准。
 生成12秒无音轨测试图案，2秒一个 fMP4 分段；前三段在 Tigris，后三段在 HF。只上传测试素材。节点中保留 demo/synthetic/<内容版本>/ 对象供复测，不删除用户文件。
 

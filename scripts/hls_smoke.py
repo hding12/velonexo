@@ -1,3 +1,4 @@
+from workspace_paths import RUNTIME
 """Generate a synthetic HLS fixture and verify delivery from both real stores."""
 import hashlib
 import json
@@ -7,12 +8,12 @@ from pathlib import Path
 from urllib.parse import quote
 from urllib.request import Request, urlopen
 from urllib.error import HTTPError
-from storage_probe import ROOT, dotenv_values, boto3, Config, batch_bucket_files
+from storage_probe import ROOT, ENV_FILE, dotenv_values, boto3, Config, batch_bucket_files
 
 
 def main():
-    values = dotenv_values(ROOT / '.env.local')
-    work = ROOT / '.local/hls-smoke'
+    values = dotenv_values(ENV_FILE)
+    work = RUNTIME / 'hls-smoke'
     work.mkdir(parents=True, exist_ok=True)
     subprocess.run(['ffmpeg', '-hide_banner', '-loglevel', 'error', '-y', '-f', 'lavfi',
         '-i', 'testsrc2=size=360x640:rate=24', '-t', '12', '-c:v', 'libx264',

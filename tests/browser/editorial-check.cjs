@@ -1,6 +1,7 @@
+const {CATALOG,CONFIG,runtimePath}=require('../../server/workspace-paths.cjs');
 const {waitJob}=require('./studio-poll.cjs');
 const {chromium}=require('playwright');const assert=require('node:assert/strict');const fs=require('node:fs');
-const file='public/catalog/videos.json',baseline=fs.readFileSync(file);
+const file=CATALOG,baseline=fs.readFileSync(file);
 (async()=>{const b=await chromium.launch({channel:'chrome',headless:true});try{const p=await b.newPage();await p.goto('http://127.0.0.1:5174/studio');await p.waitForFunction(()=>document.querySelector('fieldset')?.disabled===false);const section=p.locator('section').filter({has:p.getByRole('heading',{name:'Destacados y colecciones'})});
  async function save(){const response=p.waitForResponse(r=>r.url().endsWith('/api/studio/editorial')&&r.request().method()==='POST');await section.getByRole('button',{name:'Guardar selección'}).click();const job=(await(await response).json()).job;assert(job);await waitJob(p,job.id,'succeeded')}
  const c=JSON.parse(baseline);const title=id=>c.videos.find(v=>v.id===id).title;await section.getByRole('checkbox',{name:title('demo-2'),exact:true}).check();await section.getByRole('checkbox',{name:title('demo-1'),exact:true}).check();await save();await p.reload();await p.waitForFunction(()=>document.querySelector('fieldset')?.disabled===false);await section.getByLabel('Selección editorial').selectOption('new');await section.getByLabel('Identificador',{exact:true}).fill('test-collection');await section.getByLabel('Nombre de colección').fill('Colección de prueba');await section.getByRole('checkbox',{name:title('demo-3'),exact:true}).check();await save();

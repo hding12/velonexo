@@ -1,6 +1,7 @@
+const {CATALOG,CONFIG,runtimePath}=require('../../server/workspace-paths.cjs');
 const {waitJob}=require('./studio-poll.cjs');
 const {chromium}=require('playwright');const assert=require('node:assert/strict');const fs=require('node:fs');
-const file='public/catalog/videos.json',baseline=fs.readFileSync(file);
+const file=CATALOG,baseline=fs.readFileSync(file);
 (async()=>{const b=await chromium.launch({channel:'chrome',headless:true});try{const p=await b.newPage();await p.goto('http://127.0.0.1:5174/studio');await p.waitForFunction(()=>document.querySelector('fieldset')?.disabled===false);
  async function mutation(click){const response=p.waitForResponse(r=>r.url().endsWith('/api/studio/taxonomy')&&r.request().method()==='POST');await click();const job=(await(await response).json()).job;assert(job);await waitJob(p,job.id,'succeeded');await p.reload();await p.waitForFunction(()=>document.querySelector('fieldset')?.disabled===false)}
  await p.getByLabel('Nombre actual').selectOption('vertical');await p.getByLabel('Nuevo nombre').fill('horizontal');await mutation(()=>p.getByRole('button',{name:'Renombrar o combinar'}).click());assert.equal(JSON.parse(fs.readFileSync(file)).videos.find(v=>v.id==='demo-1').category,'horizontal');await mutation(()=>p.getByRole('button',{name:'Subir horizontal',exact:true}).click());
