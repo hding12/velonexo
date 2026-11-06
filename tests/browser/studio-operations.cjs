@@ -1,0 +1,22 @@
+const {chromium}=require('playwright');const fs=require('node:fs');const assert=require('node:assert/strict');
+const baseline=fs.readFileSync('public/catalog/videos.json');
+(async()=>{const b=await chromium.launch({channel:'chrome',headless:true});try{
+ const p=await b.newPage({viewport:{width:390,height:844}});await p.goto('http://127.0.0.1:5174/studio');await p.waitForFunction(()=>!document.querySelector('fieldset').disabled);
+ const token=(await(await p.request.get('http://127.0.0.1:5174/api/studio/session')).json()).token;
+ const headers={'X-Studio-Token':token};
+ const invalid=await p.request.post('http://127.0.0.1:5174/api/studio/upload',{headers:{...headers,'X-Studio-Provider':'local','X-Studio-Metadata':encodeURIComponent(JSON.stringify({title:'Prueba de recuperación',creator:'@test',category:'prueba',tags:[]}))},data:Buffer.from('invalid video fixture')});assert.equal(invalid.status(),202);const job=(await invalid.json()).job;
+ const row=p.locator(`[data-job-id="${job.id}"]`);await row.getByText('No pudimos leer o convertir el video. Prueba con otro archivo.').waitFor({timeout:15000});
+ await row.getByRole('button',{name:'Reintentar',exact:true}).click();await row.getByText('Intentos: 2').waitFor();await row.getByRole('button',{name:'Limpiar restos',exact:true}).waitFor();
+ await p.waitForFunction(id=>document.querySelector(`[data-job-id="${id}"]`)?.textContent.includes('No pudimos leer'),job.id);
+ await row.getByRole('button',{name:'Limpiar restos'}).click();const dialog=p.getByRole('dialog',{name:'Limpiar carga fallida'});await dialog.getByRole('button',{name:'Cancelar',exact:true}).click();assert(fs.existsSync(`.local/studio/uploads/${job.id}.source`));
+ await row.getByRole('button',{name:'Limpiar restos'}).click();await p.getByRole('dialog').getByRole('button',{name:'Eliminar restos'}).click();await row.getByText('Archivos temporales eliminados',{exact:true}).waitFor({timeout:15000});assert(!fs.existsSync(`.local/studio/uploads/${job.id}.source`));assert.deepEqual(fs.readFileSync('public/catalog/videos.json'),baseline);
+ await p.getByLabel('Buscar en la biblioteca').fill('Sigue mirando');assert.equal(await p.locator('.studio-entry').count(),1);await p.getByLabel('Buscar en la biblioteca').fill('');
+ for(const id of ['demo-1','demo-2'])await p.locator(`[data-entry-id="${id}"]`).getByRole('checkbox').check();
+ await p.getByRole('button',{name:'Retirar selección (2)',exact:true}).click();for(const id of ['demo-1','demo-2'])await p.locator(`[data-entry-id="${id}"]`).getByText('Retirado · @velonexo').waitFor({timeout:15000});
+ await p.getByLabel('Estado',{exact:true}).selectOption('removed');assert.equal(await p.locator('.studio-entry').count(),2);
+ await p.getByRole('button',{name:'Seleccionar visibles (máx. 50)'}).click();await p.getByRole('button',{name:'Publicar selección (2)',exact:true}).click();await p.getByText('No hay videos con estos filtros.').waitFor({timeout:15000});
+ await p.getByLabel('Estado',{exact:true}).selectOption('published');assert.equal(await p.locator('.studio-entry').count(),4);
+ const snapshot=fs.readFileSync('public/catalog/videos.json');const bad=await p.request.post('http://127.0.0.1:5174/api/studio/batch',{headers,data:{action:'withdraw',ids:['demo-1','missing']}});assert.equal(bad.status(),400);assert.deepEqual(fs.readFileSync('public/catalog/videos.json'),snapshot);
+ assert(await p.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));await p.screenshot({path:'.local/acceptance/studio-operations.png',fullPage:true});
+ console.log('PASS: actionable error, same-job retry, cleanup confirmation/cancel, source cleanup, library search/status, atomic bulk withdraw/publish, invalid batch isolation');
+}finally{await b.close();fs.writeFileSync('public/catalog/videos.json.test-restore',baseline);fs.renameSync('public/catalog/videos.json.test-restore','public/catalog/videos.json')}})().catch(e=>{console.error(e);process.exit(1)});

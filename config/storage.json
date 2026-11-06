@@ -1,0 +1,24 @@
+{
+  "schema_version": 1,
+  "group_size": 3,
+  "providers": [
+    {
+      "id": "tigris",
+      "type": "s3",
+      "bucket_env": "TIGRIS_BUCKET",
+      "endpoint_env": "TIGRIS_ENDPOINT_URL",
+      "region_env": "TIGRIS_REGION",
+      "access_key_env": "TIGRIS_ACCESS_KEY_ID",
+      "secret_key_env": "TIGRIS_SECRET_ACCESS_KEY",
+      "project_limit_bytes": 100000000,
+      "enabled": false
+    },
+    {
+      "id": "hf",
+      "type": "hf",
+      "bucket_env": "HF_BUCKET",
+      "token_env": "HF_TOKEN",
+      "project_limit_bytes": 100000000
+    }
+  ]
+}

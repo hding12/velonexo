@@ -1,0 +1,10 @@
+<!doctype html><html lang="es-CL"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>body{margin:0;background:#141414;color:#ddd;font:14px Arial}#post{max-width:550px;margin:auto}p{padding:12px}a{color:#fff}</style></head><body><p id="status" role="status">Cargando publicación de X…</p><div id="post"></div><script>
+const id=new URLSearchParams(location.search).get('id');
+if(id&&/^\d+$/.test(id)){
+ const status=document.getElementById('status');
+ const timer=setTimeout(()=>status.textContent='Si la publicación no carga, puedes verla en el sitio original.',15000);
+ const script=document.createElement('script');script.src='https://platform.twitter.com/widgets.js';script.async=true;
+ script.onerror=()=>{clearTimeout(timer);status.textContent='No pudimos cargar la publicación. Puedes verla en el sitio original.'};
+ script.onload=()=>{window.twttr.ready(t=>{t.widgets.createTweet(id,document.getElementById('post'),{theme:'dark',lang:'es',dnt:true,conversation:'none'}).then(el=>{clearTimeout(timer);status.textContent=el?'':'Esta publicación no está disponible aquí. Puedes verla en el sitio original.'}).catch(()=>{clearTimeout(timer);status.textContent='No pudimos cargar la publicación. Puedes verla en el sitio original.'})})};document.head.append(script);
+}else document.getElementById('status').textContent='Enlace no válido.';
+</script></body></html>

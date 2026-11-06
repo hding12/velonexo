@@ -1,0 +1,8 @@
+import {useState} from 'react';
+import type {VideoEntry} from '../services/catalog';
+export function Taxonomy({entries,order,busy,submit}:{entries:VideoEntry[];order:{categories?:string[];tags?:string[]};busy:boolean;submit:(value:unknown)=>Promise<void>}){
+ const [kind,setKind]=useState<'category'|'tag'>('category');const [source,setSource]=useState('');const [target,setTarget]=useState('');
+ const used=kind==='category'?entries.map(e=>e.category||'prueba'):entries.flatMap(e=>e.tags);
+ const names=[...new Set([...(kind==='category'?order.categories||[]:order.tags||[]),...used.sort((a,b)=>a.localeCompare(b,'es-CL'))])];
+ return <section className="studio-panel"><h2>Categorías y etiquetas</h2><label>Tipo<select aria-label="Tipo de clasificación" value={kind} onChange={e=>{setKind(e.target.value as typeof kind);setSource('')}}><option value="category">Categorías</option><option value="tag">Etiquetas</option></select></label><form onSubmit={e=>{e.preventDefault();void submit({kind,source,target})}}><fieldset disabled={busy}><label>Nombre actual<select aria-label="Nombre actual" value={source} required onChange={e=>setSource(e.target.value)}><option value="">Seleccionar</option>{names.map(n=><option key={n}>{n}</option>)}</select></label><label>Nuevo nombre<input value={target} onChange={e=>setTarget(e.target.value)} maxLength={80} required/></label><p>Si el nombre ya existe, se combinarán las referencias de todos los videos.</p><button>Renombrar o combinar</button></fieldset></form><ol>{names.map((n,i)=><li key={n}>{n} <button disabled={busy||i===0} aria-label={'Subir '+n} onClick={()=>{const next=[...names];[next[i-1],next[i]]=[next[i],next[i-1]];void submit({kind,order:next})}}>Subir</button></li>)}</ol></section>
+}

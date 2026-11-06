@@ -1,0 +1,23 @@
+const {waitJob}=require('./studio-poll.cjs');
+const {chromium}=require('playwright');const assert=require('node:assert/strict');const fs=require('node:fs');
+const catalogPath='public/catalog/videos.json';const baseline=fs.readFileSync(catalogPath);let testId;const remote=process.env.STUDIO_TEST_PROVIDER==='distributed';const title='Prueba Studio '+Date.now();
+(async()=>{const b=await chromium.launch({channel:'chrome',headless:true});try{
+ const p=await b.newPage({viewport:{width:390,height:844}});const errors=[];p.on('pageerror',e=>errors.push(e.message));await p.goto('http://127.0.0.1:5174/studio');await p.getByRole('button',{name:'Preparar borrador'}).waitFor();await p.waitForFunction(()=>!document.querySelector('fieldset').disabled);
+ const session=await (await p.request.get('http://127.0.0.1:5174/api/studio/session')).json();const headers={'X-Studio-Token':session.token};
+ assert.equal((await p.request.post('http://127.0.0.1:5174/api/studio/entries/demo-1/withdraw')).status(),403);
+ assert.equal((await p.request.post('http://127.0.0.1:5174/api/studio/entries/demo-1/withdraw',{headers:{...headers,Origin:'https://evil.example'}})).status(),403);
+ await p.getByLabel('Archivo de video').setInputFiles(remote?'.local/fixtures/portrait-audio.mp4':'.local/acceptance/source-00.mp4');await p.getByLabel('Título',{exact:true}).fill(title);await p.getByLabel('Etiquetas',{exact:true}).fill('prueba, studio');await p.getByLabel('Guardar en').selectOption(remote?'distributed':'local');await p.getByRole('button',{name:'Preparar borrador'}).click();
+ const row=p.locator('.studio-entry').filter({hasText:title});await row.waitFor({timeout:180000});await row.getByText('Borrador · @velonexo').waitFor();const id=await row.getAttribute('data-entry-id');testId=id;
+ let entry=JSON.parse(fs.readFileSync(catalogPath)).videos.find(v=>v.id===id);assert.equal(entry.visibility,'draft');
+ await row.getByRole('button',{name:'Vista previa',exact:true}).click();await p.waitForFunction(()=>document.querySelector('.studio-preview video')?.currentTime>.2);await p.getByRole('button',{name:'Cerrar vista previa'}).click();assert.equal(await p.locator('video').count(),0);
+ await row.getByRole('button',{name:'Editar',exact:true}).click();const dialog=p.getByRole('dialog',{name:'Editar video'});await dialog.getByLabel('Título',{exact:true}).fill(title+' editado');await dialog.getByRole('button',{name:'Guardar cambios'}).click();await row.getByText(title+' editado',{exact:true}).waitFor({timeout:180000});
+ await row.getByRole('button',{name:'Publicar',exact:true}).click();await row.getByText('Publicado · @velonexo').waitFor({timeout:180000});
+ const preview=await b.newPage();await preview.goto('http://127.0.0.1:5174/video/'+id);await preview.waitForFunction(()=>document.querySelector('.zc-tiktok__fit video')?.currentTime>.2);await preview.close();
+ await row.getByRole('button',{name:'Retirar',exact:true}).click();await row.getByText('Retirado · @velonexo').waitFor({timeout:180000});
+ await row.getByRole('button',{name:'Publicar',exact:true}).click();await row.getByText('Publicado · @velonexo').waitFor({timeout:180000});
+ await p.reload();await p.locator('.studio-entry').filter({hasText:title}).waitFor();assert(await p.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
+ await p.screenshot({path:'.local/acceptance/studio-mobile.png',fullPage:true});
+ const before=fs.readFileSync(catalogPath);const invalid=await p.request.post('http://127.0.0.1:5174/api/studio/upload',{headers:{...headers,'X-Studio-Metadata':encodeURIComponent(JSON.stringify({title:'Archivo inválido',creator:'@test',category:'prueba',tags:[]})),'X-Studio-Provider':'local','Content-Type':'application/octet-stream'},data:Buffer.from('not a video')});assert.equal(invalid.status(),202);const job=(await invalid.json()).job;
+ await waitJob(p,job.id,'failed');assert.deepEqual(fs.readFileSync(catalogPath),before);assert.deepEqual(errors,[]);
+ console.log('PASS: local upload/draft/preview/edit/publish/withdraw/restore/reload; invalid file isolation; cross-origin and token rejection; mobile width');
+}finally{await b.close();try{if(testId){const {spawnSync}=require('node:child_process');for(const action of ['withdraw','purge']){let result;for(let attempt=0;attempt<6;attempt++){result=spawnSync('.venv/bin/python',['scripts/media_publish.py',action,testId],{encoding:'utf8'});if(result.status===0)break;if(!result.stderr?.includes('BlockingIOError'))break;await new Promise(r=>setTimeout(r,500))}if(result.status!==0)throw Error('Failed test cleanup: '+action+' '+result.stderr)}}}finally{fs.writeFileSync(catalogPath+'.test-restore',baseline);fs.renameSync(catalogPath+'.test-restore',catalogPath)}}})().catch(e=>{console.error(e);process.exit(1)});

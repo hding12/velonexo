@@ -1,0 +1,45 @@
+# Dependencies and generated outputs
+node_modules/
+dist/
+coverage/
+playwright-report/
+test-results/
+
+# Local credentials
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# Local files
+.DS_Store
+*.log
+
+# Python tools
+.venv/
+__pycache__/
+*.pyc
+
+# Local media and expiring signed manifests
+.local/
+
+# Runtime catalog and personal external-link experiments
+/public/catalog/videos.json
+/tests/experimental/
+
+# Raw corpora, media, archives and local account configuration
+/data/
+/crawl/
+*.jsonl
+*.mp4
+*.m4s
+*.m3u8
+*.mov
+*.webm
+*.zip
+*.tar
+*.gz
+/.aws/
+/.codex/
+/.agents/

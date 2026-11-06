@@ -1,0 +1,4 @@
+const assert=require('node:assert/strict');
+async function waitState(page,predicate,timeout=180000){const deadline=Date.now()+timeout;while(Date.now()<deadline){const session=await(await page.request.get('http://127.0.0.1:5174/api/studio/session')).json();const response=await page.request.get('http://127.0.0.1:5174/api/studio/state',{headers:{'X-Studio-Token':session.token}});assert(response.ok());const state=await response.json();if(predicate(state))return state;await new Promise(r=>setTimeout(r,100))}throw Error('Studio state timed out')}
+async function waitJob(page,id,expected='succeeded'){const state=await waitState(page,state=>state.jobs.some(j=>j.id===id&&['failed','succeeded'].includes(j.state)));const job=state.jobs.find(j=>j.id===id);assert.equal(job.state,expected,job.error);return job}
+module.exports={waitState,waitJob};
